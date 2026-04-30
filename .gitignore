@@ -1,0 +1,6 @@
+*.pyc
+*.egg-info
+*.claude
+*.cursor
+*.idea
+*__pycache__/

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nicegui-openlayers"
+version = "0.1.0"
+description = "OpenLayers map component for NiceGUI"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Jackson Shields" }]
+dependencies = ["nicegui>=2.0"]
+
+[tool.setuptools.packages.find]
+include = ["nicegui_openlayers*"]
+
+[tool.setuptools.package-data]
+nicegui_openlayers = [
+    "frontend/*.js",
+    "frontend/*.css",
+    "frontend/*.vue",
+    "frontend/ol/*.js",
+    "frontend/ol/*.css",
+    "frontend/proj4/*.js",
+]
