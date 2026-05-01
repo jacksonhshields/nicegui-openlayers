@@ -29,6 +29,36 @@ BASEMAP_PRESETS = {
         'url': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         'attribution': 'Tiles © Esri',
     },
+    'esri_oceans': {
+        'type': 'xyz',
+        'title': 'Oceans (Esri)',
+        'url': 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
+        'attribution': (
+            'Tiles © Esri, GEBCO, NOAA, National Geographic, DeLorme, HERE, '
+            'Geonames.org, and other contributors'
+        ),
+    },
+    'usgs_imagery': {
+        'type': 'xyz',
+        'title': 'USGS Imagery',
+        'url': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
+        'attribution': 'Tiles courtesy of the U.S. Geological Survey',
+    },
+    'usgs_imagery_topo': {
+        'type': 'xyz',
+        'title': 'USGS Imagery Topo',
+        'url': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}',
+        'attribution': 'Tiles courtesy of the U.S. Geological Survey',
+    },
+    'eox_sentinel2_cloudless': {
+        'type': 'xyz',
+        'title': 'Sentinel-2 Cloudless',
+        'url': 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg',
+        'attribution': (
+            'Sentinel-2 cloudless by EOX IT Services GmbH '
+            '(contains modified Copernicus Sentinel data 2020)'
+        ),
+    },
     'opentopomap': {
         'type': 'xyz',
         'title': 'OpenTopoMap',

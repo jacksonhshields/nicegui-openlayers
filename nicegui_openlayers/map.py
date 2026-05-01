@@ -189,8 +189,8 @@ class OpenLayersMap(Element,
                     **kwargs: Any) -> Layer:
         """Add a built-in basemap by preset name.
 
-        Available presets: ``osm``, ``osm_hot``, ``carto_light``, ``carto_dark``,
-        ``esri_world_imagery``, ``opentopomap``.
+        Available presets are listed in
+        :data:`nicegui_openlayers.presets.BASEMAP_PRESETS`.
         Basemaps are added to a single ``Basemaps`` group with exclusive selection.
         """
         if preset not in BASEMAP_PRESETS:
