@@ -1023,6 +1023,7 @@ export default {
         value: this._measureValue(geom, kind),
         coords,
         units: this._measureUnitsFor(kind),
+        bearing: kind === "Distance" ? this._currentBearing(geom) : null,
       });
       // pop out of the tool unless the user wants continuous measuring
       if (!(this.measureConfig && this.measureConfig.continuous)) {
@@ -1097,7 +1098,10 @@ export default {
         const ang = this._geodesicAngle(geom);
         return ang == null ? "—" : ang.toFixed(1) + "°";
       }
-      return this._formatLength(this._geodesicLength(geom));
+      const lenText = this._formatLength(this._geodesicLength(geom));
+      const bearing = this._currentBearing(geom);
+      if (bearing == null) return lenText;
+      return `${lenText}  ${bearing.toFixed(0).padStart(3, "0")}°`;
     },
 
     _measureValue(geom, kind) {
@@ -1114,6 +1118,17 @@ export default {
       // ol.sphere.getLength reprojects from the view projection to the WGS84
       // sphere internally and returns a length in metres.
       return ol.sphere.getLength(geom, { projection: this.currentProjection });
+    },
+
+    _currentBearing(geom) {
+      // Bearing of the most recent segment (last-but-one coordinate -> last).
+      const coords = geom.getCoordinates();
+      if (!coords || coords.length < 2) return null;
+      const proj = this.currentProjection;
+      const a = ol.proj.toLonLat(coords[coords.length - 2], proj);
+      const b = ol.proj.toLonLat(coords[coords.length - 1], proj);
+      if (a[0] === b[0] && a[1] === b[1]) return null;
+      return this._initialBearing(a, b);
     },
 
     _geodesicAngle(geom) {

@@ -109,7 +109,7 @@ draw_layer = m.draw_control(types=['Point', 'LineString', 'Polygon', 'Rectangle'
 # Measure tools (distance + angle) and a scale bar. Distance is computed
 # geodesically (great-circle), so the answer is independent of the active
 # view projection.
-m.measure_control(types=['Distance', 'Angle'], units='metric')
+m.measure_control(types=['Distance'], units='metric')
 m.scale_bar(units='metric')
 
 with ui.row().classes('items-center gap-4'):
