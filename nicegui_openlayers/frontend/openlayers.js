@@ -70,6 +70,7 @@ export default {
                 title="Clear measurements" @click="clearMeasurements"
                 v-html="toolIcon('Clear')"></button>
       </div>
+      <slot></slot>
       <div v-if="layerControl" class="nol-layers">
         <div class="nol-layers-header" @click="layerPanelOpen = !layerPanelOpen">
           <span class="nol-group-caret">{{ layerPanelOpen ? '▼' : '▶' }}</span>
@@ -160,6 +161,8 @@ export default {
       _measureSketchListener: null,
       _measureCounter: 0,
       _scaleLine: null,
+      _customControls: {},     // id -> { control: ol.control.Control, spec }
+      _customControlCounts: { 'top-left': 0, 'top-right': 0, 'bottom-left': 0, 'bottom-right': 0 },
     };
   },
   computed: {
@@ -873,6 +876,78 @@ export default {
         minWidth: cfg.minWidth || 80,
       });
       this.map.addControl(this._scaleLine);
+    },
+
+    // ===== Custom controls =====
+
+    add_custom_control(spec) {
+      if (this._customControls[spec.id]) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'nol-custom-button';
+      if (spec.title) button.title = spec.title;
+      button.innerHTML = spec.html || '';
+      if (spec.active) button.classList.add('nol-custom-active');
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.$emit('control_click', { id: spec.id });
+      });
+
+      const element = document.createElement('div');
+      const position = spec.position || 'top-left';
+      const stack = this._customControlCounts[position] || 0;
+      this._customControlCounts[position] = stack + 1;
+      element.className = `nol-custom-control nol-control-${position} ol-unselectable ol-control`;
+      if (spec.classes) element.className += ' ' + spec.classes;
+      // Default offsets clear the built-in OL controls in each corner:
+      //   top-left:     under the zoom buttons
+      //   top-right:    plain top, but right of any layer panel a user adds
+      //   bottom-left:  clear of the scale-line
+      //   bottom-right: above the attribution badge
+      // Each additional control in the same corner stacks by ~2.2em.
+      // Users can override with spec.css.
+      const baseOffsetEm = position === 'top-left' ? 4.6
+        : position === 'bottom-right' ? 2.5
+        : 0.5;
+      const offsetEm = `calc(${baseOffsetEm}em + ${stack * 2.2}em)`;
+      const axis = position.startsWith('top') ? 'top' : 'bottom';
+      element.style[axis] = offsetEm;
+      if (spec.css) {
+        for (const [k, v] of Object.entries(spec.css)) element.style[k] = v;
+      }
+      element.appendChild(button);
+
+      const control = new ol.control.Control({ element });
+      this.map.addControl(control);
+      this._customControls[spec.id] = { control, spec, button };
+    },
+
+    remove_custom_control(id) {
+      const entry = this._customControls[id];
+      if (!entry) return;
+      this.map.removeControl(entry.control);
+      delete this._customControls[id];
+      // do not decrement _customControlCounts: keeping the count stable
+      // means later additions don't shift on top of existing buttons.
+    },
+
+    update_custom_control(id, patch) {
+      const entry = this._customControls[id];
+      if (!entry) return;
+      const { button, spec } = entry;
+      if ('html' in patch) {
+        button.innerHTML = patch.html || '';
+        spec.html = patch.html;
+      }
+      if ('title' in patch) {
+        button.title = patch.title || '';
+        spec.title = patch.title;
+      }
+      if ('active' in patch) {
+        button.classList.toggle('nol-custom-active', !!patch.active);
+        spec.active = !!patch.active;
+      }
     },
 
     // ===== Measurement =====

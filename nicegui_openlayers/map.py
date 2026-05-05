@@ -9,6 +9,8 @@ from nicegui.awaitable_response import AwaitableResponse, NullResponse
 from nicegui.element import Element
 from nicegui.events import GenericEventArguments, handle_event
 
+from .controls import POSITIONS as CONTROL_POSITIONS
+from .controls import CustomControl
 from .layers import GeoJsonLayer, Layer, OsmLayer, VectorLayer, WmsLayer, XyzLayer
 from .presets import BASEMAP_PRESETS
 
@@ -54,6 +56,7 @@ class OpenLayersMap(Element,
         self._props['scaleBarConfig'] = None
 
         self._layers: list[Layer] = []
+        self._controls: list[CustomControl] = []
         self._is_initialized = False
         self._init_event = asyncio.Event()
         self._draw_layer: 'VectorLayer | None' = None
@@ -72,6 +75,7 @@ class OpenLayersMap(Element,
         self.on('draw_deleted', self._handle_draw_deleted)
         self.on('draw_mode', self._noop)
         self.on('measure', self._noop)
+        self.on('control_click', self._handle_control_click)
 
     # ------------------------------------------------------------------
     # lifecycle / plumbing
@@ -87,6 +91,8 @@ class OpenLayersMap(Element,
             super().run_method('add_layer', layer.to_dict())
             for feature in layer.features():
                 super().run_method('add_feature', layer.id, feature.to_dict())
+        for control in self._controls:
+            super().run_method('add_custom_control', control.to_dict())
 
     async def initialized(self) -> None:
         """Wait for the client to finish initial setup."""
@@ -439,6 +445,138 @@ class OpenLayersMap(Element,
     def close_popup(self) -> None:
         if self._is_initialized:
             super().run_method('close_popup')
+
+    # ------------------------------------------------------------------
+    # custom controls
+    # ------------------------------------------------------------------
+
+    CONTROL_POSITIONS = CONTROL_POSITIONS
+
+    _PANEL_DEFAULT_CSS: dict[str, dict[str, str]] = {
+        # Defaults clear the built-in OpenLayers controls in each corner.
+        # ``top-left`` lands under the zoom buttons + any ``add_control`` button stack.
+        # ``bottom-right`` lifts above the attribution badge.
+        'top-left': {'top': '4.6em', 'left': '0.5em'},
+        'top-right': {'top': '0.5em', 'right': '0.5em'},
+        'bottom-left': {'bottom': '0.5em', 'left': '0.5em'},
+        'bottom-right': {'bottom': '2.5em', 'right': '0.5em'},
+    }
+
+    def panel(self,
+              position: str = 'top-left',
+              *,
+              classes: str = '',
+              css: dict | None = None) -> Element:
+        """Add a panel overlay for arbitrary NiceGUI content.
+
+        Use as a context manager — anything created inside the ``with`` block
+        becomes part of the panel and is positioned in the chosen corner of
+        the map. Update content like any other NiceGUI element (``set_text``,
+        ``set_value``, ``bind_*``...): there is no separate wire protocol.
+
+        Example::
+
+            with m.panel('bottom-right').classes('bg-white/95 shadow rounded p-3'):
+                ui.label('Boat-1').classes('font-bold')
+                hdg = ui.label('Heading: 0°')
+                bat = ui.linear_progress(value=0)
+
+            # later, from anywhere:
+            hdg.set_text(f'Heading: {h:.0f}°')
+            bat.set_value(b / 100)
+
+        :param position: One of :data:`CONTROL_POSITIONS`.
+        :param classes: Extra CSS classes for the panel container.
+        :param css: Inline-CSS overrides for fine-grained positioning. Merged
+            on top of the default offsets, e.g. ``{'top': '20%', 'left': '50%',
+            'transform': 'translateX(-50%)'}`` for a top-centre banner.
+        :returns: A NiceGUI ``Element`` (a ``<div>``) you can fill via
+            ``with`` and style with the usual ``.classes()`` / ``.style()``.
+        """
+        if position not in CONTROL_POSITIONS:
+            raise ValueError(f'position must be one of {CONTROL_POSITIONS}, got {position!r}')
+        style_dict = dict(self._PANEL_DEFAULT_CSS[position])
+        if css:
+            style_dict.update(css)
+        style_str = ';'.join(f'{k}:{v}' for k, v in style_dict.items())
+        cls = f'nol-panel nol-panel-{position}'
+        if classes:
+            cls += ' ' + classes
+        from nicegui import ui  # local import keeps this module importable from non-page code
+        with self:
+            return ui.element('div').classes(cls).style(style_str)
+
+    def add_control(self,
+                    html: str = '',
+                    *,
+                    on_click: Callable[..., Any] | None = None,
+                    title: str | None = None,
+                    position: str = 'top-left',
+                    css: dict | None = None,
+                    classes: str | None = None,
+                    active: bool = False) -> CustomControl:
+        """Add a custom button to the map's control container.
+
+        Mirrors the `OpenLayers custom-controls example
+        <https://openlayers.org/en/latest/examples/custom-controls.html>`_:
+        the button is rendered inside an ``ol.control.Control`` so it sits
+        alongside the built-in zoom, scale and attribution controls.
+
+        :param html: Button content. Plain text, HTML or inline SVG.
+        :param on_click: Callable invoked when the button is clicked. Either
+            zero-arg or accepting a single ``GenericEventArguments``.
+        :param title: Tooltip shown on hover.
+        :param position: One of ``'top-left'`` (default), ``'top-right'``,
+            ``'bottom-left'``, ``'bottom-right'``. Multiple controls in the
+            same corner stack with a small offset; pass ``css`` for custom
+            placement.
+        :param css: Extra inline CSS as a dict (e.g.
+            ``{'top': '120px', 'left': '0.5em'}``) for fine-grained
+            positioning.
+        :param classes: Extra CSS class names applied to the control wrapper.
+        :param active: Start in the active (highlighted) state.
+        :returns: A :class:`CustomControl` handle whose ``set_html``,
+            ``set_active`` and ``remove`` methods drive the live control.
+        """
+        control = CustomControl(_new_id('control'),
+                                html=html,
+                                title=title,
+                                position=position,
+                                css=css,
+                                classes=classes,
+                                active=active,
+                                on_click=on_click)
+        control._map = self
+        self._controls.append(control)
+        if self._is_initialized:
+            super().run_method('add_custom_control', control.to_dict())
+        return control
+
+    def remove_control(self, control: CustomControl) -> None:
+        """Remove a custom control previously added via :meth:`add_control`."""
+        if control in self._controls:
+            self._controls.remove(control)
+        if self._is_initialized:
+            super().run_method('remove_custom_control', control.id)
+        control._map = None
+
+    def controls(self) -> list[CustomControl]:
+        """List all custom controls currently on the map."""
+        return list(self._controls)
+
+    def _send_control_update(self, control_id: str, patch: dict) -> None:
+        if self._is_initialized:
+            super().run_method('update_custom_control', control_id, patch)
+
+    def _handle_control_click(self, e: GenericEventArguments) -> None:
+        cid = (e.args or {}).get('id')
+        if cid is None:
+            return
+        for c in self._controls:
+            if c.id == cid:
+                if c._on_click is not None:
+                    handle_event(c._on_click, e)
+                return
 
     # ------------------------------------------------------------------
     # layer control
