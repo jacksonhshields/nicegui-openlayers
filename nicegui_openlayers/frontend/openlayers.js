@@ -80,6 +80,12 @@ export default {
           <div v-for="group in layerGroups" :key="group.name" class="nol-group">
             <div class="nol-group-header" @click="toggleGroup(group.name)">
               <span class="nol-group-caret">{{ groupOpen[group.name] === false ? '▶' : '▼' }}</span>
+              <input type="checkbox"
+                     class="nol-group-toggle"
+                     :checked="group.anyVisible"
+                     :indeterminate="!group.exclusive && group.anyVisible && !group.allVisible"
+                     @click.stop
+                     @change="onToggleGroupVisible(group.name, $event.target.checked)" />
               <span>{{ group.name }}</span>
             </div>
             <div v-show="groupOpen[group.name] !== false" class="nol-group-body">
@@ -133,6 +139,7 @@ export default {
       popupHtml: "",
       layerPanelOpen: true,
       groupOpen: {},
+      _groupMemory: {},      // exclusive group name -> last visible layer id
       olLayers: {},          // id -> ol.layer.*
       olFeatures: {},        // layerId -> { featureId -> ol.Feature }
       featureSpecs: {},      // layerId -> { featureId -> spec snapshot }
@@ -178,6 +185,10 @@ export default {
       const ordered = [];
       for (const name of this.groupOrder) if (seen[name]) { ordered.push(seen[name]); delete seen[name]; }
       for (const name in seen) ordered.push(seen[name]);
+      for (const g of ordered) {
+        g.anyVisible = g.layers.some((l) => l.visible);
+        g.allVisible = g.layers.every((l) => l.visible);
+      }
       return ordered;
     },
   },
@@ -789,6 +800,32 @@ export default {
     },
     onSetOpacity(id, opacity) {
       this.set_layer_opacity(id, opacity);
+    },
+    onToggleGroupVisible(name, visible) {
+      const ids = this.layerOrder.filter((id) => this.layerMeta[id] && this.layerMeta[id].group === name);
+      if (!ids.length) return;
+      const exclusive = this.layerMeta[ids[0]].exclusive;
+      if (exclusive) {
+        if (visible) {
+          const pick = ids.includes(this._groupMemory[name]) ? this._groupMemory[name] : ids[0];
+          this.onExclusivePick(name, pick);
+        } else {
+          const current = ids.find((id) => this.layerMeta[id].visible);
+          if (current) this._groupMemory[name] = current;
+          for (const id of ids) {
+            this.olLayers[id].setVisible(false);
+            this.layerMeta[id].visible = false;
+            this.$emit("layer_visibility", { id, visible: false, group: name });
+          }
+        }
+        return;
+      }
+      for (const id of ids) {
+        if (this.layerMeta[id].visible === visible) continue;
+        this.olLayers[id].setVisible(visible);
+        this.layerMeta[id].visible = visible;
+        this.$emit("layer_visibility", { id, visible, group: name });
+      }
     },
     onExclusivePick(group, id) {
       for (const oid of this.layerOrder) {
