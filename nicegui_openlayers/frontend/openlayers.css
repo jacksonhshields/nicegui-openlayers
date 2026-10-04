@@ -222,3 +222,30 @@
   font-size: 13px;
   color: #1f2937;
 }
+
+/* Interactive popup (Python ``Popup``): NiceGUI content anchored at a map
+   point. left/top are set to the anchor pixel; transform lifts it above. */
+.nol-element-popup {
+  position: absolute;
+  z-index: 6;
+  transform: translate(-50%, calc(-100% - 14px));
+  background: white;
+  color: #222;
+  border-radius: 4px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  padding: 8px 26px 8px 10px;
+  min-width: 80px;
+  max-width: 360px;
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: auto;
+}
+.nol-element-popup::after {
+  content: "";
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: white;
+}

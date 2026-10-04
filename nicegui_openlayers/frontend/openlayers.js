@@ -169,6 +169,7 @@ export default {
       _measureCounter: 0,
       _scaleLine: null,
       _customControls: {},     // id -> { control: ol.control.Control, spec }
+      _elementPopups: {},      // NiceGUI element id -> [lon, lat] of open Popup elements
       _customControlCounts: { 'top-left': 0, 'top-right': 0, 'bottom-left': 0, 'bottom-right': 0 },
     };
   },
@@ -248,6 +249,7 @@ export default {
       this.map.addOverlay(this._measureTooltipOverlay);
       if (this.scaleBarConfig) this._applyScaleBar(this.scaleBarConfig);
       this.map.on("singleclick", (e) => this.handleClick(e));
+      this.map.on("postrender", () => this._positionElementPopups());
       this.map.on("pointermove", (e) => {
         if (e.dragging) return;
         const hit = this.map.hasFeatureAtPixel(e.pixel);
@@ -750,6 +752,36 @@ export default {
       this.popupOverlay.setPosition(undefined);
     },
     close_popup() { this.closePopup(); },
+
+    // Popup elements (Python ``Popup``) are NiceGUI children in the default
+    // slot; they stay in place in the DOM and are just repositioned here.
+    open_element_popup(id, coord) {
+      this._elementPopups[id] = coord;
+      this.closePopup();
+      // The element may not be rendered/visible yet; retry for a few frames.
+      let tries = 0;
+      const place = () => {
+        if (!(id in this._elementPopups)) return;
+        if (!this._positionElementPopup(id) && tries++ < 30) requestAnimationFrame(place);
+      };
+      place();
+    },
+    close_element_popup(id) {
+      delete this._elementPopups[id];
+    },
+    _positionElementPopup(id) {
+      const el = document.getElementById("c" + id);
+      const coord = this._elementPopups[id];
+      if (!el || !coord || !this.map) return false;
+      const px = this.map.getPixelFromCoordinate(ol.proj.fromLonLat(coord, this.currentProjection));
+      if (!px) return false;
+      el.style.left = px[0] + "px";
+      el.style.top = px[1] + "px";
+      return true;
+    },
+    _positionElementPopups() {
+      for (const id in this._elementPopups) this._positionElementPopup(id);
+    },
 
     // ===== View =====
 
@@ -1439,10 +1471,18 @@ export default {
           layer_id: layerId,
           feature_id: featureId,
           coord: ol.proj.toLonLat(evt.coordinate, this.currentProjection),
+          feature_coord: geom.getType() === "Point"
+            ? ol.proj.toLonLat(geom.getCoordinates(), this.currentProjection)
+            : null,
         });
       }
-      if (!features.length && !suppressPopup) {
-        this.closePopup();
+      // An HTML popup and an element popup never show together; empty-map
+      // clicks close both.
+      if (popupShown || (!features.length && !suppressPopup)) {
+        if (!popupShown) this.closePopup();
+        for (const id of Object.keys(this._elementPopups)) {
+          this.$emit("element_popup_close", { id: Number(id) });
+        }
       }
       this.$emit("map_click", { coord: ol.proj.toLonLat(evt.coordinate, this.currentProjection) });
     },

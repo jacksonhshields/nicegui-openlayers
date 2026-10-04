@@ -21,6 +21,7 @@ from .controls import CustomControl
 from .features import Feature, Line, Marker, Polygon, SvgMarker
 from .layers import GeoJsonLayer, Layer, OsmLayer, VectorLayer, WmsLayer, XyzLayer
 from .map import OpenLayersMap, openlayers
+from .popup import Popup
 from .presets import BASEMAP_PRESETS
 
 __all__ = [
@@ -34,6 +35,7 @@ __all__ = [
     'OpenLayersMap',
     'OsmLayer',
     'Polygon',
+    'Popup',
     'SvgMarker',
     'VectorLayer',
     'WmsLayer',

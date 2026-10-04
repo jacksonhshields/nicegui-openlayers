@@ -9,6 +9,7 @@ Features:
 - Custom XYZ "slippy" tile layers and **WMS** layers (tiled or single-image)
 - **GeoJSON** layers (inline data or remote URL) with live `set_data` / `set_url` / `set_style`
 - HTML popups attached to features, plus ad-hoc popups at any coordinate
+- Interactive popups (`m.popup()`) holding live NiceGUI elements — buttons, inputs, selects — anchored at a map point
 - SVG icon markers (string-based, easy to template per feature)
 - Built-in collapsible **layer-control tree** with checkboxes / radios / opacity sliders
 - Interactive **drawing** toolbar: point, line, polygon, rectangle, edit, delete; drawn features round-trip back to Python
@@ -50,6 +51,7 @@ See `examples/` for:
 - `02_live_data.py` — moving marker, growing trail, rotating polygon
 - `03_layers.py` — multiple basemaps, a WMS overlay, a custom XYZ overlay, layer tree
 - `04_svg_and_popups.py` — SVG markers, popups, click events, live SVG rotation
+- `10_interactive_popups.py` — popups with NiceGUI buttons/inputs opened from feature clicks
 - `05_drawing.py` — drawing toolbar, edit/delete, drawn features visible from Python
 - `06_geojson.py` — load / swap / extend / restyle a GeoJSON layer
 - `07_projections.py` — switch the view between EPSG:3857, EPSG:4326 and UTM 56S

@@ -12,6 +12,7 @@ from nicegui.events import GenericEventArguments, handle_event
 from .controls import POSITIONS as CONTROL_POSITIONS
 from .controls import CustomControl
 from .layers import GeoJsonLayer, Layer, OsmLayer, VectorLayer, WmsLayer, XyzLayer
+from .popup import Popup
 from .presets import BASEMAP_PRESETS
 
 _FRONTEND = Path(__file__).parent / 'frontend'
@@ -57,6 +58,7 @@ class OpenLayersMap(Element,
 
         self._layers: list[Layer] = []
         self._controls: list[CustomControl] = []
+        self._popups: list[Popup] = []
         self._is_initialized = False
         self._init_event = asyncio.Event()
         self._draw_layer: 'VectorLayer | None' = None
@@ -76,6 +78,7 @@ class OpenLayersMap(Element,
         self.on('draw_mode', self._noop)
         self.on('measure', self._noop)
         self.on('control_click', self._handle_control_click)
+        self.on('element_popup_close', self._handle_element_popup_close)
 
     # ------------------------------------------------------------------
     # lifecycle / plumbing
@@ -93,6 +96,9 @@ class OpenLayersMap(Element,
                 super().run_method('add_feature', layer.id, feature.to_dict())
         for control in self._controls:
             super().run_method('add_custom_control', control.to_dict())
+        for popup in self._popups:
+            if popup.coord is not None:
+                super().run_method('open_element_popup', popup.id, list(popup.coord))
 
     async def initialized(self) -> None:
         """Wait for the client to finish initial setup."""
@@ -445,6 +451,29 @@ class OpenLayersMap(Element,
     def close_popup(self) -> None:
         if self._is_initialized:
             super().run_method('close_popup')
+
+    def popup(self, *, classes: str = '', css: dict | None = None) -> Popup:
+        """Add an interactive popup for arbitrary NiceGUI content.
+
+        Fill it with ``with popup:`` (``popup.clear()`` empties it), then
+        ``popup.open((lon, lat))`` to anchor it on the map; ``popup.close()``
+        hides it. A click on empty map space also closes it. Typically opened
+        from :meth:`on_feature_click`, whose event args carry
+        ``feature_coord`` (the clicked point feature's position).
+
+        :param classes: Extra CSS classes for the popup container.
+        :param css: Inline-CSS overrides for the popup container.
+        """
+        with self:
+            popup = Popup(self, classes=classes, css=css)
+        self._popups.append(popup)
+        return popup
+
+    def _handle_element_popup_close(self, e: GenericEventArguments) -> None:
+        popup_id = (e.args or {}).get('id') if isinstance(e.args, dict) else None
+        for popup in self._popups:
+            if popup.id == popup_id:
+                popup.close()
 
     # ------------------------------------------------------------------
     # custom controls
