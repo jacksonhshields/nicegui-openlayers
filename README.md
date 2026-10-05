@@ -13,7 +13,7 @@ Features:
 - SVG icon markers (string-based, easy to template per feature)
 - Built-in collapsible **layer-control tree** with checkboxes / radios / opacity sliders
 - Interactive **drawing** toolbar: point, line, polygon, rectangle, edit, delete; drawn features round-trip back to Python
-- Standard NiceGUI events: `feature_click`, `map_click`, `view_change`, `layer_visibility`, `draw_created`, `draw_modified`, `draw_deleted`
+- Standard NiceGUI events: `feature_click`, `map_click`, `map_contextmenu`, `view_change`, `layer_visibility`, `draw_created`, `draw_modified`, `draw_deleted`
 - **Fully offline:** OpenLayers is bundled in the package — no CDN at runtime
 
 All coordinates are `(longitude, latitude)` in EPSG:4326.

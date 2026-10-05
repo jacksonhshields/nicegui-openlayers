@@ -71,6 +71,7 @@ class OpenLayersMap(Element,
         self.on('view_change', self._handle_view_change)
         self.on('feature_click', self._noop)
         self.on('map_click', self._noop)
+        self.on('map_contextmenu', self._noop)
         self.on('layer_visibility', self._noop)
         self.on('draw_created', self._handle_draw_created)
         self.on('draw_modified', self._handle_draw_modified)
@@ -771,6 +772,15 @@ class OpenLayersMap(Element,
     def on_map_click(self,
                      handler: Callable[[GenericEventArguments], Any]) -> 'OpenLayersMap':
         self.on('map_click', handler)
+        return self
+
+    def on_map_contextmenu(self,
+                           handler: Callable[[GenericEventArguments], Any]) -> 'OpenLayersMap':
+        """Right-click on the map. ``e.args`` carries ``coord`` (lon, lat),
+        ``features`` (list of ``{layer_id, feature_id}`` under the cursor) and
+        ``client_x``/``client_y`` (viewport pixels, for positioning a menu).
+        The browser's own context menu is suppressed."""
+        self.on('map_contextmenu', handler)
         return self
 
     def on_view_change(self,

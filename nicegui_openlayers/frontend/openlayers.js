@@ -249,6 +249,7 @@ export default {
       this.map.addOverlay(this._measureTooltipOverlay);
       if (this.scaleBarConfig) this._applyScaleBar(this.scaleBarConfig);
       this.map.on("singleclick", (e) => this.handleClick(e));
+      this.map.getViewport().addEventListener("contextmenu", (e) => this.handleContextMenu(e));
       this.map.on("postrender", () => this._positionElementPopups());
       this.map.on("pointermove", (e) => {
         if (e.dragging) return;
@@ -1485,6 +1486,22 @@ export default {
         }
       }
       this.$emit("map_click", { coord: ol.proj.toLonLat(evt.coordinate, this.currentProjection) });
+    },
+
+    handleContextMenu(evt) {
+      evt.preventDefault();
+      const pixel = this.map.getEventPixel(evt);
+      const coordinate = this.map.getCoordinateFromPixel(pixel);
+      const features = (this.map.getFeaturesAtPixel(pixel) || []).map((f) => ({
+        layer_id: f.get("nolLayerId"),
+        feature_id: f.get("nolFeatureId"),
+      }));
+      this.$emit("map_contextmenu", {
+        coord: ol.proj.toLonLat(coordinate, this.currentProjection),
+        features,
+        client_x: evt.clientX,
+        client_y: evt.clientY,
+      });
     },
   },
 };
